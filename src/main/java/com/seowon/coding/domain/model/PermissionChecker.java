@@ -4,12 +4,19 @@ package com.seowon.coding.domain.model;
 import lombok.Builder;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 class PermissionChecker {
 
     /**
-     * TODO #7: 코드를 최적화하세요
-     * 테스트 코드`PermissionCheckerTest`를 활용하시면 리펙토링에 도움이 됩니다.
+     * TODO #7: 코드 최적화 완료
+     * 
+     * 최적화 내용:
+     * 1. Map을 활용한 O(1) 조회 - 5중 중첩 루프 제거
+     * 2. Stream API 활용 - 가독성 및 함수형 프로그래밍
+     * 3. 조기 종료 - anyMatch로 첫 매칭 시 즉시 반환
      */
     public static boolean hasPermission(
             String userId,
@@ -19,29 +26,36 @@ class PermissionChecker {
             List<UserGroup> groups,
             List<Policy> policies
     ) {
-        for (User user : users) {
-            if (user.id.equals(userId)) {
-                for (String groupId : user.groupIds) {
-                    for (UserGroup group : groups) {
-                        if (group.id.equals(groupId)) {
-                            for (String policyId : group.policyIds) {
-                                for (Policy policy : policies) {
-                                    if (policy.id.equals(policyId)) {
-                                        for (Statement statement : policy.statements) {
-                                            if (statement.actions.contains(targetAction) &&
-                                                statement.resources.contains(targetResource)) {
-                                                return true;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        // 1. Map으로 변환하여 O(1) 조회 가능하게 최적화
+        Map<String, User> userMap = users.stream()
+                .collect(Collectors.toMap(u -> u.id, Function.identity()));
+        
+        Map<String, UserGroup> groupMap = groups.stream()
+                .collect(Collectors.toMap(g -> g.id, Function.identity()));
+        
+        Map<String, Policy> policyMap = policies.stream()
+                .collect(Collectors.toMap(p -> p.id, Function.identity()));
+        
+        // 2. 사용자 조회 (O(1))
+        User user = userMap.get(userId);
+        if (user == null || user.groupIds == null || user.groupIds.isEmpty()) {
+            return false;
         }
-        return false;
+        
+        // 3. 사용자의 그룹들에 대해 권한 확인
+        return user.groupIds.stream()
+                .map(groupMap::get)  // 그룹 조회 (O(1))
+                .filter(group -> group != null && group.policyIds != null)
+                .flatMap(group -> group.policyIds.stream())
+                .map(policyMap::get)  // 정책 조회 (O(1))
+                .filter(policy -> policy != null && policy.statements != null)
+                .flatMap(policy -> policy.statements.stream())
+                .anyMatch(statement ->  // 첫 매칭 시 즉시 true 반환
+                        statement.actions != null && 
+                        statement.resources != null &&
+                        statement.actions.contains(targetAction) &&
+                        statement.resources.contains(targetResource)
+                );
     }
 }
 
