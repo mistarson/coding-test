@@ -1,6 +1,7 @@
 package com.seowon.coding.controller;
 
 import com.seowon.coding.controller.dto.OrderCreateRequestDto;
+import com.seowon.coding.controller.dto.OrderCreateResponseDto;
 import com.seowon.coding.domain.model.Order;
 import com.seowon.coding.service.OrderProduct;
 import com.seowon.coding.service.OrderService;
@@ -76,17 +77,14 @@ public class OrderController {
             @RequestBody OrderCreateRequestDto requestDto
             ){
 
-        List<Long> productIds = new ArrayList<>();
-        List<Integer> quantities = new ArrayList<>();
-        for (OrderProduct orderProduct : requestDto.products()) {
-            productIds.add(orderProduct.getProductId());
-            quantities.add(orderProduct.getQuantity());
-        }
+        Long orderId = orderService.placeOrder(
+                requestDto.customerName(),
+                requestDto.customerEmail(),
+                requestDto.products(),
+                requestDto.couponCode()
+        );
 
-        Order order = orderService.placeOrder(requestDto.customerName(), requestDto.customerEmail(),
-                productIds, quantities);
-
-        return ResponseEntity.created(URI.create("/"+order.getId())).build();
+        return ResponseEntity.created(URI.create("/" + orderId)).body(new OrderCreateResponseDto(orderId));
     }
 
 }

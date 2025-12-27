@@ -38,16 +38,11 @@ public class OrderItem {
 
     public static OrderItem createOrderItem(Order order, Product product, int qty) {
 
-        OrderItem item = OrderItem.builder()
+        return OrderItem.builder()
                 .order(order)
                 .product(product)
                 .quantity(qty)
                 .price(product.getPrice())
                 .build();
-        order.getItems().add(item);
-
-        product.decreaseStock(qty);
-
-        return item;
     }
 }

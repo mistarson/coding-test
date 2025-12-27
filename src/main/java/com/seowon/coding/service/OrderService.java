@@ -55,7 +55,7 @@ public class OrderService {
 
 
 
-    public Order placeOrder(String customerName, String customerEmail, List<Long> productIds, List<Integer> quantities) {
+    public Long placeOrder(String customerName, String customerEmail, List<OrderProduct> orderProducts, String couponCode) {
         // TODO #3: 구현 항목
         // * 주어진 고객 정보로 새 Order를 생성
         // * 지정된 Product를 주문에 추가
@@ -64,15 +64,23 @@ public class OrderService {
         // * order 를 저장
         // * 각 Product 의 재고를 수정
         // * placeOrder 메소드의 시그니처는 변경하지 않은 채 구현하세요.
-        List<OrderProduct> orderProducts = new ArrayList<>();
-        for(int i = 0; i < productIds.size(); i++){
-            Long productId = productIds.get(i);
-            Integer quantity = quantities.get(i);
-            OrderProduct orderProduct = OrderProduct.builder().productId(productId).quantity(quantity).build();
-            orderProducts.add(orderProduct);
+
+        Order order = Order.createPendingOrder(customerName, customerEmail, orderProducts);
+
+        for (OrderProduct req : orderProducts) {
+            Long pid = req.getProductId();
+            int qty = req.getQuantity();
+
+            Product product = productRepository.findById(pid)
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + pid));
+            product.decreaseStock(qty);
+
+            order.addItem(OrderItem.createOrderItem(order, product, qty));
         }
 
-        return checkoutOrder(customerName, customerEmail, orderProducts, "");
+        order.calculateTotal(couponCode);
+
+        return orderRepository.save(order).getId();
     }
 
     /**
@@ -86,25 +94,18 @@ public class OrderService {
                                String couponCode) {
         Order order = Order.createPendingOrder(customerName, customerEmail, orderProducts);
 
-        BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderProduct req : orderProducts) {
             Long pid = req.getProductId();
             int qty = req.getQuantity();
 
             Product product = productRepository.findById(pid)
                     .orElseThrow(() -> new IllegalArgumentException("Product not found: " + pid));
-            product.validateQuantity(qty, product.getId());
+            product.decreaseStock(qty);
 
-            OrderItem.createOrderItem(order, product, qty);
-
-            subtotal = subtotal.add(product.getPrice().multiply(BigDecimal.valueOf(qty)));
+            order.addItem(OrderItem.createOrderItem(order, product, qty));
         }
 
-        BigDecimal shipping = subtotal.compareTo(new BigDecimal("100.00")) >= 0 ? BigDecimal.ZERO : new BigDecimal("5.00");
-        BigDecimal discount = (couponCode != null && couponCode.startsWith("SALE")) ? new BigDecimal("10.00") : BigDecimal.ZERO;
-
-        order.setTotalAmount(subtotal.add(shipping).subtract(discount));
-        order.setStatus(Order.OrderStatus.PROCESSING);
+        order.calculateTotal(couponCode);
 
         return orderRepository.save(order);
     }

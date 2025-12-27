@@ -42,8 +42,11 @@ public class Product {
     }
     
     public void decreaseStock(int quantity) {
-        if (quantity > stockQuantity) {
-            throw new IllegalArgumentException("Not enough stock available");
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+        if (this.getStockQuantity() < quantity) {
+            throw new IllegalStateException("insufficient stock for product " + this.id);
         }
         stockQuantity -= quantity;
     }
@@ -55,12 +58,4 @@ public class Product {
         stockQuantity += quantity;
     }
 
-    public void validateQuantity(int qty, Long pid) {
-        if (qty <= 0) {
-            throw new IllegalArgumentException("quantity must be positive: " + qty);
-        }
-        if (this.getStockQuantity() < qty) {
-            throw new IllegalStateException("insufficient stock for product " + pid);
-        }
-    }
 }
