@@ -84,22 +84,7 @@ public class OrderService {
                                String customerEmail,
                                List<OrderProduct> orderProducts,
                                String couponCode) {
-        if (customerName == null || customerEmail == null) {
-            throw new IllegalArgumentException("customer info required");
-        }
-        if (orderProducts == null || orderProducts.isEmpty()) {
-            throw new IllegalArgumentException("orderReqs invalid");
-        }
-
-        Order order = Order.builder()
-                .customerName(customerName)
-                .customerEmail(customerEmail)
-                .status(Order.OrderStatus.PENDING)
-                .orderDate(LocalDateTime.now())
-                .items(new ArrayList<>())
-                .totalAmount(BigDecimal.ZERO)
-                .build();
-
+        Order order = Order.createPendingOrder(customerName, customerEmail, orderProducts);
 
         BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderProduct req : orderProducts) {
@@ -108,22 +93,10 @@ public class OrderService {
 
             Product product = productRepository.findById(pid)
                     .orElseThrow(() -> new IllegalArgumentException("Product not found: " + pid));
-            if (qty <= 0) {
-                throw new IllegalArgumentException("quantity must be positive: " + qty);
-            }
-            if (product.getStockQuantity() < qty) {
-                throw new IllegalStateException("insufficient stock for product " + pid);
-            }
+            product.validateQuantity(qty, product.getId());
 
-            OrderItem item = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(qty)
-                    .price(product.getPrice())
-                    .build();
-            order.getItems().add(item);
+            OrderItem.createOrderItem(order, product, qty);
 
-            product.decreaseStock(qty);
             subtotal = subtotal.add(product.getPrice().multiply(BigDecimal.valueOf(qty)));
         }
 
@@ -132,6 +105,7 @@ public class OrderService {
 
         order.setTotalAmount(subtotal.add(shipping).subtract(discount));
         order.setStatus(Order.OrderStatus.PROCESSING);
+
         return orderRepository.save(order);
     }
 

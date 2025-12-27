@@ -35,4 +35,19 @@ public class OrderItem {
     public BigDecimal getSubtotal() {
         return price.multiply(BigDecimal.valueOf(quantity));
     }
+
+    public static OrderItem createOrderItem(Order order, Product product, int qty) {
+
+        OrderItem item = OrderItem.builder()
+                .order(order)
+                .product(product)
+                .quantity(qty)
+                .price(product.getPrice())
+                .build();
+        order.getItems().add(item);
+
+        product.decreaseStock(qty);
+
+        return item;
+    }
 }

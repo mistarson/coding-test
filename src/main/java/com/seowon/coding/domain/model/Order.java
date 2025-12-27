@@ -1,5 +1,6 @@
 package com.seowon.coding.domain.model;
 
+import com.seowon.coding.service.OrderProduct;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -75,5 +76,24 @@ public class Order {
     
     public enum OrderStatus {
         PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+    }
+
+    public static Order createPendingOrder(String customerName, String customerEmail, List<OrderProduct> orderProducts) {
+
+        if (customerName == null || customerEmail == null) {
+            throw new IllegalArgumentException("customer info required");
+        }
+        if (orderProducts == null || orderProducts.isEmpty()) {
+            throw new IllegalArgumentException("orderReqs invalid");
+        }
+
+        return Order.builder()
+                .customerName(customerName)
+                .customerEmail(customerEmail)
+                .status(Order.OrderStatus.PENDING)
+                .orderDate(LocalDateTime.now())
+                .items(new ArrayList<>())
+                .totalAmount(BigDecimal.ZERO)
+                .build();
     }
 }
