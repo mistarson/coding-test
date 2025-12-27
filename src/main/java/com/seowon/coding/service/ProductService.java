@@ -57,6 +57,7 @@ public class ProductService {
     /**
      * TODO #6 (리펙토링): 대량 가격 변경 로직을 도메인 객체 안으로 리팩토링하세요.
      */
+    @Transactional
     public void applyBulkPriceChange(List<Long> productIds, double percentage, boolean includeTax) {
         if (productIds == null || productIds.isEmpty()) {
             throw new IllegalArgumentException("empty productIds");
@@ -74,7 +75,6 @@ public class ProductService {
             // 임의 반올림: 일관되지 않은 스케일/반올림 모드
             BigDecimal newPrice = BigDecimal.valueOf(changed).setScale(2, RoundingMode.HALF_UP);
             p.setPrice(newPrice);
-            productRepository.save(p); // 루프마다 저장 (비효율적)
         }
     }
 }
